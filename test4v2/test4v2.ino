@@ -11,9 +11,9 @@ const int steps_1ml = stepsPerRevolution*6/8 ;
 
 Adafruit_StepperMotor *myMotor = AFMS.getStepper(stepsPerRevolution, 2); //200 steps, connected to M1 and M2 (define the motor)
 
-String input1 = "not done";
-String input2 = "not done";
-String input3= "not done";
+String input1 = "";
+String input2 = "";
+String input3= "";
 float currentPosition = 0;
 
 
