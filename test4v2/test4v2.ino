@@ -1,36 +1,60 @@
-#include <Wire.h>
-#include <Adafruit_MotorShield.h>
+
 #include <AccelStepper.h>
 
-// Create the motor shield object with the default I2C address
-Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 
-const int stepsPerRevolution = 200; //amount for NEMA 17
-const int standard_speed = 40;
-const int steps_1ml = stepsPerRevolution*6/8 ;
 
-Adafruit_StepperMotor *myMotor = AFMS.getStepper(stepsPerRevolution, 2); //200 steps, connected to M1 and M2 (define the motor)
+const int stepsPerRev= 200; //amount for NEMA 17
+const int steps_1ml = stepsPerRev*6/8 ;
 
-String input1 = "";
-String input2 = "";
-String input3= "";
+// Define stepper motor connections and steps per revolution
+// here modify Digital pins as needed
+#define motor1StepPin 2
+#define motor1DirPin  3
+#define motor2StepPin 4
+#define motor2DirPin  5
+
+#define sensor A0 // pin for the sensor
+
+AccelStepper motor1(AccelStepper::DRIVER, motor1StepPin, motor1DirPin); //we specify we are using a driver
+AccelStepper motor2(AccelStepper::DRIVER, motor2StepPin, motor2DirPin);
+
 float currentPosition = 0;
 
+//calibrates the seringue to 0ml
+void calibrate(){
+  int read_value = analogRead(sensor);
+  if(read_value!=0){
+    Serial.println("déja calibré à 0ml");
+  }
+  else{
+    while(analogRead(sensor)==0){
+      Serial.println("calibrating...");
+      motor1.move(-2);
+    }
+    Serial.println("calibré");
+    currentPosition = 0;
+  }
+   
+}
+
+bool amountAllowed(float currentPosition, float value){
+  if((currentPosition + value) >10 || (currentPosition +value <0)){
+    Serial.println("Amount not allowed, try again");
+    return 0;
+  }
+  else return 1;
+}
 
 void setup() {
-  Serial.begin(9600);                     // set up Serial library at 9600 bps
-  Serial.println("Test: turning mL to steps");
-  AFMS.begin();   // create with the default frequency 1.6KHz    // cuestionable linea
-  //AFMS.begin(1000);   // OR with a different frequency, say 1KHz
+  motor1.setMaxSpeed(1000);
+  motor1.setAcceleration(500); //if acceleration is not specified, motor will run at maxspeed
   
-  myMotor->setSpeed(standard_speed);  // 40 rpm  
-  Serial.println("which mL are you at ?");
-  while (!Serial.available()) {
-    // Attendre que l'utilisateur entre une valeur
-  }
-  input3 = Serial.readString(); // Lire en tant qu'entier
-  input3.trim();
-  float currentPosition = input3.toFloat();
+  motor2.setMaxSpeed(1000);
+  motor2.setAcceleration(500);
+  
+  Serial.begin(9600);                     // set up Serial library at 9600 bps
+  Serial.println("Test: code version 5, on va calibrer");
+  calibrate();
   
 }
 
@@ -42,9 +66,8 @@ void loop() {
   while (!Serial.available()) {
     // Do nothing, just wait for input
   }
-  input1 = Serial.readString();
+  String input1 = Serial.readString();
   input1.trim(); // Remove any \r \n whitespace at the end of the String
-  Serial.println(input1);
 
   Serial.println("Please write volume in mL: ");
   
@@ -52,41 +75,32 @@ void loop() {
   while (!Serial.available()) {
     // Do nothing, just wait for input
   }
-  input2 = Serial.readString();
-  input2.trim();
-  float value = input2.toFloat();
-  Serial.println(input2);
+  float value = Serial.parseFloat();
   Serial.println(value);
 
   int steps = value * steps_1ml; //no change!
 
   if(input1=="PUSH"){
     value*=-1;
+    steps*=-1;
   }
   
-  if((currentPosition + value) >10 || (currentPosition +value <0)){
-    Serial.println("Amount not allowed, try again");
-  }
-  else{
+ 
+  if(amountAllowed(currentPosition, value)){
     
       currentPosition += value;
     
       if (input1 == "PUSH") {
-        Serial.println("TURN forward double coil, amount of steps: ");
-        Serial.println(steps);
-        myMotor->step(steps, FORWARD, DOUBLE);
-       
-        delay(1000);
+        Serial.println("Pushing... amount of steps:");
      }
       if (input1 == "PULL") {
-        Serial.println("TURN backward Double coil, amount of steps: ");
-        Serial.println(steps);
-        myMotor->step(steps, BACKWARD, DOUBLE);
-        
-        delay(1000);
+        Serial.println("Pulling...amount of steps: ");
       }
+      Serial.println(steps);
+      motor1.move(steps);
+      delay(1000);
   }
   
   
-  delay(3000); // Add a delay before the next loop iteration
+  delay(2000); // Add a delay before the next loop iteration
 }
