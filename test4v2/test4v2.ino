@@ -30,6 +30,7 @@ void calibrate(){
     while(analogRead(sensor)==0){
       Serial.println("calibrating...");
       motor1.move(-2);
+      motor1.run();
     }
     Serial.println("calibré");
     currentPosition = 0;
@@ -98,6 +99,7 @@ void loop() {
       }
       Serial.println(steps);
       motor1.move(steps);
+      motor1.run();
       delay(1000);
   }
   
